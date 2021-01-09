@@ -1,0 +1,9 @@
+[package]
+name = "hash-service"
+version = "0.1.0"
+authors = ["Mohsen Zohrevandi <mohsen.zohrevandi@fortanix.com>"]
+edition = "2018"
+
+[dependencies]
+tokio = { version = "0.3", features = ["full"] }
+sha2 = "0.9"

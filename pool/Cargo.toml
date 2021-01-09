@@ -1,0 +1,8 @@
+[package]
+name = "pool"
+version = "0.1.0"
+authors = ["Mohsen Zohrevandi <mohsen.zohrevandi@fortanix.com>"]
+edition = "2018"
+
+[dependencies]
+crossbeam-channel = "0.4"

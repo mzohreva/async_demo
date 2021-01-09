@@ -1,0 +1,17 @@
+[workspace]
+members = [
+    "echo-async",
+    "echo-sync",
+    "hash-service",
+    "pool",
+]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+
+[patch.crates-io]
+mio = { git = "https://github.com/mzohreva/mio", branch = "mz/sgx-port-0.7.6" }
+tokio = { git = "https://github.com/mzohreva/tokio", branch = "mz/sgx-port-0.3.4" }
