@@ -40,7 +40,7 @@ pub struct Input {
 #[derive(Debug, Serialize)]
 pub struct Output {
     pub message: String,
-    pub hash: String, // hex-encoded
+    pub hash: Option<String>, // hex-encoded
 }
 
 async fn hash_value(value: &[u8]) -> Result<[u8; 32]> {
@@ -57,11 +57,15 @@ async fn hash_value(value: &[u8]) -> Result<[u8; 32]> {
 }
 
 async fn digest_handler(req: Request<Body>) -> Result<Response<Body>> {
+    let uri = req.uri().to_owned();
     let body = hyper::body::aggregate(req.into_body()).await?;
     let input: Input = serde_json::from_reader(body.reader())?;
-    let hash = hash_value(input.message.as_bytes()).await?;
+    let hash = match uri.path() {
+        "/hash" => Some(hex::encode(hash_value(input.message.as_bytes()).await?)),
+        _ => None,
+    };
     let output = Output {
-        hash: hex::encode(hash),
+        hash,
         message: input.message,
     };
     Ok(Response::new(Body::from(serde_json::to_vec(&output)?)))

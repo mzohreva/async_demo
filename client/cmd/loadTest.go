@@ -16,6 +16,7 @@ var connections uint
 var warmupDuration time.Duration
 var testDuration time.Duration
 var useTLS bool
+var urlPath string
 
 var loadTestCmd = &cobra.Command{
 	Use:     "load-test",
@@ -32,6 +33,7 @@ func init() {
 	loadTestCmd.PersistentFlags().DurationVarP(&testDuration, "duration", "d", 30*time.Second, "Test duration")
 	loadTestCmd.PersistentFlags().DurationVarP(&warmupDuration, "warmup", "w", 10*time.Second, "Warmup duration")
 	loadTestCmd.PersistentFlags().BoolVarP(&useTLS, "tls", "t", false, "Use TLS to connect.")
+	loadTestCmd.PersistentFlags().StringVarP(&urlPath, "path", "P", "", "The API path to call, defaults to `/`")
 }
 
 type Stage int
@@ -81,7 +83,7 @@ type httpLoadTest struct {
 
 func (h *httpLoadTest) Setup() (Connection, error) {
 	conn := setupHttpConnection()
-	h.baseURL = serverURL(useTLS)
+	h.baseURL = serverURL(useTLS, urlPath)
 	err := h.setupFunc(conn, h.baseURL)
 	return conn, err
 }

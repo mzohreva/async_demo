@@ -1,8 +1,10 @@
 use pool::blocking::{Connect, Pool};
 
 use anyhow::{anyhow, Result};
+use hyper::uri::RequestUri;
 use hyper::server::{Request, Response, Server};
 use hyper::status::StatusCode;
+use hyper::Url;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +37,7 @@ pub struct Input {
 #[derive(Debug, Serialize)]
 pub struct Output {
     pub message: String,
-    pub hash: String, // hex-encoded
+    pub hash: Option<String>, // hex-encoded
 }
 
 fn hash_value(value: &[u8]) -> Result<[u8; 32]> {
@@ -52,10 +54,18 @@ fn hash_value(value: &[u8]) -> Result<[u8; 32]> {
 }
 
 fn digest_handler(req: Request) -> Result<Vec<u8>> {
+    let uri = match req.uri {
+        RequestUri::AbsolutePath(ref s) => Url::parse(&format!("http://example.com{}", s))?,
+        RequestUri::AbsoluteUri(ref uri) => uri.to_owned(),
+        _ => return Err(anyhow!("unsupported request URI")),
+    };
     let input: Input = serde_json::from_reader(req)?;
-    let hash = hash_value(input.message.as_bytes())?;
+    let hash = match uri.path() {
+        "/hash" => Some(hex::encode(hash_value(input.message.as_bytes())?)),
+        _ => None,
+    };
     let output = Output {
-        hash: hex::encode(hash),
+        hash,
         message: input.message,
     };
     Ok(serde_json::to_vec(&output)?)

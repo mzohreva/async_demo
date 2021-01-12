@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -25,11 +26,14 @@ func setupRawConnection(useTLS bool) net.Conn {
 	return conn
 }
 
-func serverURL(useTLS bool) string {
-	if useTLS {
-		return fmt.Sprintf("https://%v:%v", serverHost, serverPort)
+func serverURL(useTLS bool, path string) string {
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
 	}
-	return fmt.Sprintf("http://%v:%v", serverHost, serverPort)
+	if useTLS {
+		return fmt.Sprintf("https://%v:%v%v", serverHost, serverPort, path)
+	}
+	return fmt.Sprintf("http://%v:%v%v", serverHost, serverPort, path)
 }
 
 func setupHttpConnection() *http.Client {
