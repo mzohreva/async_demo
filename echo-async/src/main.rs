@@ -1,7 +1,7 @@
 use pool::asynchronous::{Connect, Pool};
 
 use anyhow::{anyhow, Result};
-use bytes::buf::ext::BufExt;
+use bytes::Buf;
 use http::{Request, Response, StatusCode};
 use hyper::{rt, server::conn::Http, service::service_fn, Body};
 use once_cell::sync::Lazy;
@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime;
-use tokio_compat_02::IoCompat;
 
 use std::convert::{Infallible, TryFrom};
 use std::future::Future;
@@ -91,7 +90,7 @@ async fn main_loop() -> Result<()> {
         tokio::spawn(async move {
             let http = Http::new().with_executor(Executor);
             let res = http
-                .serve_connection(IoCompat::new(socket), service_fn(handle_request))
+                .serve_connection(socket, service_fn(handle_request))
                 .await;
 
             match res {
