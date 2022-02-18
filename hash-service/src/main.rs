@@ -1,4 +1,4 @@
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::io::Result;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
         tokio::spawn(async move {
             match handle_client(socket).await {
                 Err(e) => println!("Error handling request from client {}: {}", addr, e),
-                Ok(()) => {},
+                Ok(()) => {}
             }
         });
     }

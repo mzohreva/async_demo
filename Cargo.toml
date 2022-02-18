@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "echo-async",
+    "echo-async-tls",
     "echo-sync",
     "hash-service",
     "pool",
@@ -13,5 +14,6 @@ panic = "abort"
 panic = "abort"
 
 [patch.crates-io]
+mbedtls = { git = "https://github.com/fortanix/rust-mbedtls", branch = "raoul/tokio-1.15.0" }
 mio = { git = "https://github.com/mzohreva/mio", branch = "mz/sgx-port-0.7.6" }
 tokio = { git = "https://github.com/fortanix/tokio.git", branch = "raoul/tokio-1.15.0-sgx" }

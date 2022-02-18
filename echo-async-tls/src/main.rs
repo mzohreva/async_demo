@@ -4,6 +4,8 @@ use anyhow::{anyhow, Result};
 use bytes::Buf;
 use http::{Request, Response, StatusCode};
 use hyper::{rt, server::conn::Http, service::service_fn, Body};
+use mbedtls::pk::Pk;
+use mbedtls::ssl::AsyncSession;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -12,9 +14,15 @@ use tokio::runtime;
 
 use std::convert::{Infallible, TryFrom};
 use std::future::Future;
-use std::io;
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::result::Result as StdResult;
+use std::{io, mem};
+
+#[macro_use]
+mod ssl;
+
+use self::ssl::{get_key_and_cert, with_tls_server, ALPN_LIST};
 
 const HASHER_SERVICE_ADDR: &'static str = "127.0.0.1:34567";
 
@@ -80,21 +88,43 @@ async fn handle_request(req: Request<Body>) -> StdResult<Response<Body>, Infalli
     }
 }
 
+async fn handle_client(session: &mut AsyncSession<'_>, addr: SocketAddr) {
+    let mut http = Http::new().with_executor(Executor);
+    match session.get_alpn_protocol().unwrap() {
+        Ok(proto) => match proto.unwrap_or(ALPN_H1!()) {
+            ALPN_H1!() => {
+                http.http1_only(true);
+            }
+            ALPN_H2!() => {
+                http.http2_only(true);
+            }
+            other => panic!("Unknown protocol: {}", other),
+        },
+        Err(_) => panic!("Could not determine negotiated ALPN"),
+    }
+
+    let session = unsafe { mem::transmute::<&mut AsyncSession<'_>, &mut AsyncSession<'static>>(session) };
+
+    match http.serve_connection(session, service_fn(handle_request)).await {
+        Err(e) => println!("Error handling request from client {}: {}", addr, e),
+        Ok(()) => {}
+    }
+}
+
 async fn main_loop() -> Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:8080").await?;
-    println!("Echo service listening on: {} (HTTP)", listener.local_addr()?);
+    let (mut key, cert) = get_key_and_cert();
+    let key_der = key.write_private_der_vec().unwrap();
+
+    let listener = TcpListener::bind("127.0.0.1:8081").await?;
+    println!("Echo service listening on: {} (HTTPS)", listener.local_addr()?);
 
     loop {
         let (socket, addr) = listener.accept().await?;
-        tokio::spawn(async move {
-            let http = Http::new().with_executor(Executor);
-            let res = http.serve_connection(socket, service_fn(handle_request)).await;
-
-            match res {
-                Err(e) => println!("Error handling request from client {}: {}", addr, e),
-                Ok(()) => {}
-            }
-        });
+        let key = Pk::from_private_key(&key_der, None).unwrap();
+        let cert = cert.clone();
+        tokio::spawn(with_tls_server(socket, key, cert, Some(ALPN_LIST), move |session| {
+            Box::pin(handle_client(session, addr))
+        }));
     }
 }
 
